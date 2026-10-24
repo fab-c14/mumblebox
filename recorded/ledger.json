@@ -1,0 +1,30 @@
+{
+  "runs": [
+    {
+      "today": "2026-10-24",
+      "items": [
+        {
+          "source": "dishes.txt",
+          "action": "ready",
+          "kept": "kept/dishes.txt",
+          "ready": "ready/2026-10-24-sam.txt",
+          "why": "the model wrote the reply in why; kept that"
+        },
+        {
+          "source": "lab.txt",
+          "action": "ready",
+          "kept": "kept/lab.txt",
+          "ready": "ready/2026-10-24-professor-shah.txt",
+          "why": "the model wrote the reply in why; kept that"
+        },
+        {
+          "source": "meeting.txt",
+          "action": "ready",
+          "kept": "kept/meeting.txt",
+          "ready": "ready/2026-10-24-priya.txt",
+          "why": "I already have something else scheduled for that time."
+        }
+      ]
+    }
+  ]
+}
