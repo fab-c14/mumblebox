@@ -94,6 +94,77 @@ def guard(decision, source):
             raise ValueError(f"reply invents the number {number}")
 
 
+TONES = ("soft", "brief", "plain")
+
+
+def guard_text(text, source):
+    source_numbers = set(re.findall(r"\d{2,}", source))
+    for number in re.findall(r"\d{2,}", text):
+        if number not in source_numbers:
+            raise ValueError(f"reply invents the number {number}")
+
+
+def parse_drafts(text):
+    match = re.search(r"\{.*\}", text, re.DOTALL)
+    if not match:
+        raise ValueError("no json object in model output")
+    data = json.loads(match.group(0))
+    if not isinstance(data, dict):
+        raise ValueError("model output was not an object")
+    found = {}
+    for item in data.get("drafts") or []:
+        if not isinstance(item, dict):
+            continue
+        tone = str(item.get("tone", "")).strip().lower()
+        piece = str(item.get("text") or item.get("sendable") or "").strip()
+        if tone in TONES and piece:
+            found[tone] = piece
+    for tone in TONES:
+        if tone not in found and data.get(tone):
+            found[tone] = str(data[tone]).strip()
+    hold = _as_bool(data.get("hold", False))
+    if hold and not any(found.values()):
+        return {"hold": True, "drafts": []}
+    missing = [tone for tone in TONES if not found.get(tone)]
+    if missing:
+        raise ValueError("missing " + ", ".join(missing))
+    drafts = []
+    for tone in TONES:
+        piece = found[tone]
+        if len(piece) > SENDABLE_LIMIT:
+            raise ValueError(f"{tone} is too long")
+        drafts.append({"tone": tone, "text": piece})
+    if len({_flat(item["text"]) for item in drafts}) < 3:
+        raise ValueError("the three replies are not different")
+    return {"hold": False, "drafts": drafts}
+
+
+def build_draft_prompt(to, body):
+    return (
+        "Write three different replies the person could send. "
+        "They must not share the same sentences.\n"
+        "\n"
+        "Tones:\n"
+        "- soft: warm, no insult, the version that keeps the peace. Three or four sentences.\n"
+        "- brief: two sentences only. The request, then stop.\n"
+        "- plain: no apology and no softening. The fact and the ask. Two or three sentences.\n"
+        "\n"
+        "Rules:\n"
+        "- Keep the facts that are in the note. Do not add events, dates, amounts, "
+        "promises, or names that are not there.\n"
+        "- Do not copy the note word for word.\n"
+        "- Set hold to true only when the note itself says not to send it yet. "
+        "Otherwise hold is false and all three drafts are required.\n"
+        "- Reply as JSON only: "
+        '{"hold":false,"drafts":[{"tone":"soft","text":"..."},'
+        '{"tone":"brief","text":"..."},{"tone":"plain","text":"..."}]}\n'
+        "\n"
+        f"To: {to}\n"
+        "Note:\n"
+        f"{body}\n"
+    )
+
+
 def build_prompt(to, body):
     return (
         "Rewrite this private note into a short message the person can send.\n"

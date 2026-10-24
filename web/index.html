@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mumblebox</title>
+  <style>
+    :root {
+      --ink: #231f20;
+      --paper: #f3eee4;
+      --card: #fffaf3;
+      --forest: #243f39;
+      --ochre: #c9842a;
+      --line: #d9d0c2;
+      --soft: #efe6d4;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: Georgia, "Iowan Old Style", Palatino, serif;
+    }
+    header, main, footer { width: min(1080px, calc(100% - 32px)); margin: 0 auto; }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 22px 0 8px;
+    }
+    header img { width: 64px; height: 64px; border-radius: 14px; }
+    .mark { font-family: "Arial Narrow", Impact, sans-serif; letter-spacing: 0.14em; font-size: 13px; }
+    h1 { font-size: 28px; margin: 2px 0 0; font-weight: 500; }
+    .hero { margin: 12px 0 22px; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); }
+    .hero img { display: block; width: 100%; height: 280px; object-fit: cover; }
+    .desk { display: grid; grid-template-columns: 1fr 1.2fr; gap: 22px; }
+    textarea, input {
+      width: 100%;
+      font: 18px/1.45 Georgia, serif;
+      color: var(--ink);
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    textarea { min-height: 220px; resize: vertical; }
+    label { display: block; margin: 12px 0 6px; font-family: "Arial Narrow", sans-serif; letter-spacing: 0.08em; font-size: 13px; text-transform: uppercase; }
+    .row { display: flex; gap: 10px; margin-top: 12px; }
+    button {
+      font-family: "Arial Narrow", sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      cursor: pointer;
+      background: var(--forest);
+      color: #f6f1e7;
+    }
+    button.ghost { background: transparent; color: var(--forest); border: 1px solid var(--forest); }
+    .cards { display: grid; gap: 12px; }
+    article {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px 16px 16px;
+      min-height: 120px;
+    }
+    article h2 { margin: 0; font-size: 22px; font-weight: 500; }
+    article p.blurb { margin: 4px 0 10px; color: #5c564c; font-size: 14px; }
+    article .text { white-space: pre-wrap; font-size: 17px; }
+    article button { margin-top: 10px; background: var(--ochre); color: var(--ink); }
+    .status { min-height: 1.4em; margin-top: 10px; }
+    footer { padding: 28px 0 40px; color: #5c564c; }
+    @media (max-width: 800px) {
+      .desk { grid-template-columns: 1fr; }
+      .hero img { height: 180px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="/logo.jpg" alt="Mumblebox mark, three cards and a seal">
+    <div>
+      <div class="mark">Mumblebox</div>
+      <h1>One message. Three replies. Nothing is sent.</h1>
+    </div>
+  </header>
+  <main>
+    <div class="hero">
+      <img src="/desk.jpg" alt="A desk with one crumpled note and three written cards">
+    </div>
+    <div class="desk">
+      <section>
+        <label for="to">To</label>
+        <input id="to" value="Sam">
+        <label for="note">The version you will not send</label>
+        <textarea id="note">The dishes have been in the sink since Monday and I am tired of looking at them. Wash them tonight.</textarea>
+        <div class="row">
+          <button id="draft" type="button">Draft three</button>
+          <button id="sample" class="ghost" type="button">Load another</button>
+        </div>
+        <p class="status" id="status">Pick one of the three. You still send it yourself.</p>
+      </section>
+      <section class="cards" id="cards"></section>
+    </div>
+  </main>
+  <footer>Gemma runs on this machine through Ollama. A reply that invents a number is thrown out. The page never sends mail.</footer>
+  <script>
+    const samples = [
+      ["Sam", "The dishes have been in the sink since Monday and I am tired of looking at them. Wash them tonight."],
+      ["Priya", "I can't do the Friday afternoon meeting. I already have something then. Please stop putting it on my calendar."],
+      ["Professor Shah", "The lab note is late because I forgot about it until this morning. I will turn it in by the end of today."]
+    ];
+    let sampleIndex = 0;
+    const tones = [
+      ["soft", "Soft", "The one you can send without starting a fight."],
+      ["brief", "Brief", "Two sentences. The request, then stop."],
+      ["plain", "Plain", "No apology. The fact and the ask."]
+    ];
+    const cards = document.getElementById("cards");
+    const status = document.getElementById("status");
+
+    function paint(drafts) {
+      const byTone = {};
+      (drafts || []).forEach((draft) => { byTone[draft.tone] = draft; });
+      cards.innerHTML = tones.map(([tone, label, blurb]) => {
+        const draft = byTone[tone];
+        const text = draft ? draft.text : "This card is empty until you draft.";
+        return `<article>
+          <h2>${label}</h2>
+          <p class="blurb">${draft ? draft.blurb : blurb}</p>
+          <div class="text">${text.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}</div>
+          ${draft ? `<button type="button" data-copy="${tone}">Copy</button>` : ""}
+        </article>`;
+      }).join("");
+    }
+
+    paint([]);
+
+    cards.addEventListener("click", async (event) => {
+      const button = event.target.closest("button[data-copy]");
+      if (!button) return;
+      const card = button.parentElement.querySelector(".text").textContent;
+      await navigator.clipboard.writeText(card);
+      status.textContent = "Copied. It is still not sent.";
+    });
+
+    document.getElementById("sample").addEventListener("click", () => {
+      sampleIndex = (sampleIndex + 1) % samples.length;
+      document.getElementById("to").value = samples[sampleIndex][0];
+      document.getElementById("note").value = samples[sampleIndex][1];
+    });
+
+    document.getElementById("draft").addEventListener("click", async () => {
+      status.textContent = "Writing three different replies…";
+      const response = await fetch("/api/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: document.getElementById("to").value,
+          note: document.getElementById("note").value
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        status.textContent = data.error || "The draft failed.";
+        return;
+      }
+      if (data.held) {
+        paint([]);
+        status.textContent = "The note says not to send it yet. No replies were written.";
+        return;
+      }
+      paint(data.drafts);
+      status.textContent = "Three replies are ready. Pick one. Nothing was sent.";
+    });
+  </script>
+</body>
+</html>

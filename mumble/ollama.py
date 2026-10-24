@@ -21,7 +21,7 @@ class OllamaModel:
                 "prompt": prompt,
                 "stream": False,
                 "format": "json",
-                "options": {"temperature": 0.2, "num_predict": 400, "num_ctx": 2048},
+                "options": {"temperature": 0.4, "num_predict": 700, "num_ctx": 2048},
             }
         ).encode()
         request = urllib.request.Request(
